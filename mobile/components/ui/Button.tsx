@@ -110,7 +110,11 @@ export const Button: React.FC<ButtonProps> = ({
           <Text
             variant="button"
             color={getTextColor()}
-            style={[styles.buttonText, styles[`${size}Text`], textStyle]}
+            style={StyleSheet.flatten([
+              styles.buttonText, 
+              styles[`${size}Text`], 
+              textStyle
+            ])}
           >
             {title}
           </Text>

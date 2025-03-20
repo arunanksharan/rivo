@@ -3,7 +3,8 @@ import * as Speech from 'expo-speech';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
 import axios from 'axios';
-import { logger } from '@/utils/logger';
+import { logger } from '../utils/logger';
+import { API_CONFIG } from '../config';
 
 // Types
 export interface VoiceCommand {
@@ -43,8 +44,8 @@ export class VoiceAssistantService {
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
-        interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-        interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+        interruptionModeIOS: 1, // Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX
+        interruptionModeAndroid: 1, // Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });

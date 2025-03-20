@@ -7,6 +7,8 @@ import {
   TextStyle,
   TextInputProps as RNTextInputProps,
   TouchableOpacity,
+  NativeSyntheticEvent,
+  TextInputFocusEventData,
 } from 'react-native';
 import { Text } from './Text';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -37,14 +39,14 @@ export const TextInput: React.FC<TextInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(!isPassword);
   
-  const handleFocus = () => {
+  const handleFocus = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
     setIsFocused(true);
-    props.onFocus && props.onFocus();
+    props.onFocus && props.onFocus(e);
   };
   
-  const handleBlur = () => {
+  const handleBlur = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
     setIsFocused(false);
-    props.onBlur && props.onBlur();
+    props.onBlur && props.onBlur(e);
   };
   
   const togglePasswordVisibility = () => {

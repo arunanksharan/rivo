@@ -246,8 +246,8 @@ export default function PropertyCameraScreen() {
           allowsRecordingIOS: true,
           playsInSilentModeIOS: true,
           staysActiveInBackground: false,
-          interruptionModeIOS: 1, // DoNotMix value
-          interruptionModeAndroid: 1, // DoNotMix value
+          interruptionModeIOS: 1, // Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX
+          interruptionModeAndroid: 1, // Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX
           shouldDuckAndroid: true,
           playThroughEarpieceAndroid: false,
         });

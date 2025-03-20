@@ -1,13 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
-
-// These would typically be in .env file, but for demo purposes we're hardcoding them
-// In a real app, use a proper environment variable solution
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+import { API_CONFIG } from '@/config';
+import { logger } from '@/utils/logger';
 
 // Initialize Supabase client
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = createClient(
+  API_CONFIG.SUPABASE_URL, 
+  API_CONFIG.SUPABASE_ANON_KEY
+);
 
 export interface AuthUser {
   id: string;
