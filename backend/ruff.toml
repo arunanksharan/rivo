@@ -1,0 +1,67 @@
+# Ruff configuration for the Rivo backend
+
+# Enable all rules by default, then explicitly disable specific ones
+select = ["ALL"]
+ignore = [
+    "D203",  # one-blank-line-before-class (conflicts with D211)
+    "D212",  # multi-line-summary-first-line (conflicts with D213)
+    "ANN101",  # missing-type-self
+    "ANN102",  # missing-type-cls
+    "FBT001",  # boolean-positional-arg-in-function-definition
+    "FBT002",  # boolean-default-value-in-function-definition
+    "COM812",  # missing-trailing-comma (conflicts with Ruff formatter)
+    "ISC001",  # single-line-implicit-string-concatenation (conflicts with Ruff formatter)
+]
+
+# Line length to match Black's default
+line-length = 88
+
+# Target Python version
+target-version = "py310"
+
+# Exclude files and directories
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".mypy_cache",
+    ".pytest_cache",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "dist",
+    "build",
+]
+
+[per-file-ignores]
+# Ignore specific rules for tests
+"tests/**/*.py" = [
+    "S101",  # assert
+    "PLR2004",  # magic-value-comparison
+    "ANN201",  # missing-return-type-public-function
+    "D103",  # missing-docstring-public-function
+]
+# Ignore specific rules for migrations
+"alembic/**/*.py" = [
+    "ANN",  # annotations
+    "D",  # docstrings
+]
+
+[mccabe]
+max-complexity = 10
+
+[pydocstyle]
+convention = "google"
+
+[isort]
+known-first-party = ["app"]
+
+[flake8-quotes]
+docstring-quotes = "double"
+inline-quotes = "double"
+
+[flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[pyupgrade]
+# Preserve types, even if a file imports `from __future__ import annotations`
+keep-runtime-typing = true

@@ -1,0 +1,44 @@
+# FastAPI specific
+.ruff_cache/
+mypy_cache/
+site/
+
+# Python virtual environments
+venv/
+.venv/
+virtualenv/
+ENV/
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Local development settings
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Alembic migrations
+alembic/versions/__pycache__/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Poetry
+poetry.lock
+
+# Log files
+logs/
+*.log
+
+# Cached files
+__pycache__/
+*.py[cod]
+*$py.class
