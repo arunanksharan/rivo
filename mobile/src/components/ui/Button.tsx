@@ -8,7 +8,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useTheme } from '@theme/ThemeProvider';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 type ButtonSize = 'small' | 'medium' | 'large';
@@ -39,7 +39,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...rest
 }) => {
   const { theme } = useTheme();
-  
+
   const getButtonStyles = () => {
     const baseStyle: ViewStyle = {
       borderRadius: 8,
@@ -48,14 +48,14 @@ export const Button: React.FC<ButtonProps> = ({
       justifyContent: 'center',
       paddingHorizontal: theme.spacing.md,
     };
-    
+
     // Size styles
     const sizeStyles: Record<ButtonSize, ViewStyle> = {
       small: { height: 36 },
       medium: { height: 44 },
       large: { height: 52 },
     };
-    
+
     // Variant styles
     const variantStyles: Record<ButtonVariant, ViewStyle> = {
       primary: {
@@ -73,7 +73,7 @@ export const Button: React.FC<ButtonProps> = ({
         backgroundColor: 'transparent',
       },
     };
-    
+
     // Disabled styles
     const disabledStyles: Record<ButtonVariant, ViewStyle> = {
       primary: {
@@ -89,10 +89,10 @@ export const Button: React.FC<ButtonProps> = ({
         opacity: 0.5,
       },
     };
-    
+
     // Full width style
     const fullWidthStyle: ViewStyle = fullWidth ? { width: '100%' } : {};
-    
+
     return [
       baseStyle,
       sizeStyles[size],
@@ -102,20 +102,20 @@ export const Button: React.FC<ButtonProps> = ({
       style,
     ];
   };
-  
+
   const getTextStyles = () => {
     const baseStyle: TextStyle = {
       fontWeight: theme.fontWeight.medium,
       textAlign: 'center',
     };
-    
+
     // Size styles
     const sizeStyles: Record<ButtonSize, TextStyle> = {
       small: { fontSize: theme.fontSize.sm },
       medium: { fontSize: theme.fontSize.md },
       large: { fontSize: theme.fontSize.lg },
     };
-    
+
     // Variant styles
     const variantStyles: Record<ButtonVariant, TextStyle> = {
       primary: {
@@ -131,7 +131,7 @@ export const Button: React.FC<ButtonProps> = ({
         color: theme.colors.primary,
       },
     };
-    
+
     // Disabled styles
     const disabledStyles: Record<ButtonVariant, TextStyle> = {
       primary: {
@@ -147,7 +147,7 @@ export const Button: React.FC<ButtonProps> = ({
         color: theme.colors.gray500,
       },
     };
-    
+
     return [
       baseStyle,
       sizeStyles[size],
@@ -156,7 +156,7 @@ export const Button: React.FC<ButtonProps> = ({
       textStyle,
     ];
   };
-  
+
   const getSpacerSize = () => {
     switch (size) {
       case 'small':
@@ -169,9 +169,9 @@ export const Button: React.FC<ButtonProps> = ({
         return 6;
     }
   };
-  
+
   const spacerSize = getSpacerSize();
-  
+
   return (
     <TouchableOpacity
       style={getButtonStyles()}
@@ -182,7 +182,11 @@ export const Button: React.FC<ButtonProps> = ({
       {isLoading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' || variant === 'secondary' ? theme.colors.white : theme.colors.primary}
+          color={
+            variant === 'primary' || variant === 'secondary'
+              ? theme.colors.white
+              : theme.colors.primary
+          }
         />
       ) : (
         <>

@@ -38,8 +38,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const currentUser = await authService.getCurrentUser();
         setUser(currentUser);
-      } catch (error) {
-        console.error('Error checking authentication status:', error);
+      } catch (error: unknown) {
+        if (error instanceof Error && error.message === 'Auth session missing!') {
+          // Don't treat missing auth session as an error for new users
+          // Just set the user to null and continue
+          setUser(null);
+        } else {
+          console.error('Error checking authentication status:', error);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -73,8 +79,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await authService.signIn(params);
       const currentUser = await authService.getCurrentUser();
       setUser(currentUser);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -88,8 +96,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await authService.signUp(params);
       // Note: Depending on your Supabase setup, the user might need to confirm their email
       // before they can sign in. In that case, don't automatically sign them in here.
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -102,8 +112,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await authService.signInWithGoogle();
       // The auth state listener will handle updating the user
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -116,8 +128,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await authService.signOut();
       setUser(null);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -131,8 +145,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await authService.updateProfile(params);
       const currentUser = await authService.getCurrentUser();
       setUser(currentUser);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -144,8 +160,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
     try {
       await authService.resetPassword(email);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      }
       throw error;
     } finally {
       setIsLoading(false);

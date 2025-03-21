@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import { Text } from '@/components/ui/Text';
 import { TextInput } from '@/components/ui/TextInput';
 import { Button } from '@/components/ui/Button';
@@ -11,7 +18,7 @@ export default function SignupScreen() {
   const { theme } = useTheme();
   const { signUp, signInWithGoogle, isLoading } = useAuth();
   const router = useRouter();
-  
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -33,40 +40,40 @@ export default function SignupScreen() {
       password?: string;
       confirmPassword?: string;
     } = {};
-    
+
     if (!firstName) {
       newErrors.firstName = 'First name is required';
     }
-    
+
     if (!lastName) {
       newErrors.lastName = 'Last name is required';
     }
-    
+
     if (!email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Email is invalid';
     }
-    
+
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    
+
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password';
     } else if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSignup = async () => {
     if (!validateForm()) return;
-    
+
     try {
       await signUp({
         email,
@@ -99,25 +106,31 @@ export default function SignupScreen() {
   };
 
   return (
-    <ScrollView 
+    <ScrollView
       contentContainerStyle={[
-        styles.container, 
-        { backgroundColor: theme.colors.background }
+        styles.container,
+        { backgroundColor: theme.colors.background },
       ]}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.logoContainer}>
-        <Image 
-          source={require('@/assets/logo.png')} 
-          style={styles.logo} 
+        {/* <Image
+          source={require('../../../src/assets/icon.png')}
+          style={styles.logo}
           resizeMode="contain"
-        />
-        <Text variant="h2" style={styles.title}>Create Account</Text>
-        <Text variant="body1" color={theme.colors.textLight} style={styles.subtitle}>
+        /> */}
+        <Text variant="h2" style={styles.title}>
+          Create Account
+        </Text>
+        <Text
+          variant="body1"
+          color={theme.colors.textLight}
+          style={styles.subtitle}
+        >
           Sign up to get started with Rivo Real Estate
         </Text>
       </View>
-      
+
       <View style={styles.formContainer}>
         <View style={styles.nameRow}>
           <TextInput
@@ -138,7 +151,7 @@ export default function SignupScreen() {
             containerStyle={styles.nameInput}
           />
         </View>
-        
+
         <TextInput
           label="Email"
           placeholder="Enter your email"
@@ -148,7 +161,7 @@ export default function SignupScreen() {
           onChangeText={setEmail}
           error={errors.email}
         />
-        
+
         <TextInput
           label="Password"
           placeholder="Create a password"
@@ -157,7 +170,7 @@ export default function SignupScreen() {
           onChangeText={setPassword}
           error={errors.password}
         />
-        
+
         <TextInput
           label="Confirm Password"
           placeholder="Confirm your password"
@@ -166,7 +179,7 @@ export default function SignupScreen() {
           onChangeText={setConfirmPassword}
           error={errors.confirmPassword}
         />
-        
+
         <Button
           title="Sign Up"
           onPress={handleSignup}
@@ -174,13 +187,23 @@ export default function SignupScreen() {
           fullWidth
           style={styles.signUpButton}
         />
-        
+
         <View style={styles.orContainer}>
-          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-          <Text variant="body2" color={theme.colors.textLight} style={styles.orText}>OR</Text>
-          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <View
+            style={[styles.divider, { backgroundColor: theme.colors.border }]}
+          />
+          <Text
+            variant="body2"
+            color={theme.colors.textLight}
+            style={styles.orText}
+          >
+            OR
+          </Text>
+          <View
+            style={[styles.divider, { backgroundColor: theme.colors.border }]}
+          />
         </View>
-        
+
         <Button
           title="Sign Up with Google"
           variant="outline"
@@ -189,12 +212,16 @@ export default function SignupScreen() {
           style={styles.googleButton}
         />
       </View>
-      
+
       <View style={styles.footer}>
-        <Text variant="body2" color={theme.colors.textLight}>Already have an account?</Text>
+        <Text variant="body2" color={theme.colors.textLight}>
+          Already have an account?
+        </Text>
         <Link href="/(auth)/login" asChild>
           <TouchableOpacity style={styles.signInLink}>
-            <Text variant="body2" color={theme.colors.primary}>Sign In</Text>
+            <Text variant="body2" color={theme.colors.primary}>
+              Sign In
+            </Text>
           </TouchableOpacity>
         </Link>
       </View>

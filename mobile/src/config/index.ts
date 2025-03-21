@@ -1,9 +1,9 @@
 /**
  * Application configuration
- * 
+ *
  * This file loads environment variables from the .env file using react-native-dotenv.
  * For local development, copy .env.example to .env and update the values as needed.
- * 
+ *
  * IMPORTANT: Never commit the .env file to version control. It should be in .gitignore.
  */
 
@@ -35,7 +35,10 @@ const parseBool = (value: string | undefined): boolean => {
 };
 
 // Helper function to parse number environment variables
-const parseNumber = (value: string | undefined, defaultValue: number): number => {
+const parseNumber = (
+  value: string | undefined,
+  defaultValue: number
+): number => {
   if (!value) return defaultValue;
   const parsed = parseInt(value, 10);
   return isNaN(parsed) ? defaultValue : parsed;
@@ -45,16 +48,18 @@ const parseNumber = (value: string | undefined, defaultValue: number): number =>
 export const API_CONFIG = {
   // Base URLs
   BASE_URL: API_BASE_URL || 'https://api.example.com',
-  
+
   // Authentication
   SUPABASE_URL: SUPABASE_URL || 'https://mock-supabase-instance.supabase.co',
-  SUPABASE_ANON_KEY: SUPABASE_ANON_KEY || 'mock-anon-key-for-development-purposes-only',
-  
+  SUPABASE_ANON_KEY:
+    SUPABASE_ANON_KEY || 'mock-anon-key-for-development-purposes-only',
+
   // Maps and Location
   GOOGLE_MAPS_API_KEY: GOOGLE_MAPS_API_KEY || 'mock-google-maps-api-key',
-  
+
   // Voice Assistant
-  VOICE_ASSISTANT_API_URL: VOICE_ASSISTANT_API_URL || 'https://api.example.com/voice-assistant',
+  VOICE_ASSISTANT_API_URL:
+    VOICE_ASSISTANT_API_URL || 'https://api.example.com/voice-assistant',
   VOICE_RECOGNITION_KEYWORD: VOICE_RECOGNITION_KEYWORD || 'Rivo Start',
 };
 
