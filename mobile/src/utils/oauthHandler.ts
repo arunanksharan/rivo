@@ -1,16 +1,12 @@
 import * as WebBrowser from 'expo-web-browser';
-import {
-  makeRedirectUri,
-  useAuthRequest,
-  exchangeCodeAsync,
-  TokenResponse,
-} from 'expo-auth-session';
+import { makeRedirectUri, ResponseType } from 'expo-auth-session';
 import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { supabase } from '@/services/auth';
 import { logger } from '@/utils/logger';
 import { API_CONFIG } from '@/config';
+import * as AuthSession from 'expo-auth-session';
 
 // Initialize WebBrowser for OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -24,14 +20,35 @@ const GOOGLE_CONFIG = {
 };
 
 /**
- * Handles the OAuth flow for mobile applications using direct Google integration
+ * Helper function to check if running in Expo Go
+ */
+const isRunningInExpoGo = () => {
+  return Constants.executionEnvironment === 'storeClient';
+};
+
+// Create appropriate redirect URI based on environment
+const createRedirectUri = (): string => {
+  if (isRunningInExpoGo()) {
+    // For Expo Go, create a Linking URL
+    return Linking.createURL('auth/callback');
+  } else {
+    // For standalone app
+    return makeRedirectUri({
+      scheme: 'rivorealestate',
+      path: 'auth/callback',
+    });
+  }
+};
+
+/**
+ * Handles the OAuth flow for mobile applications
  * @param provider The OAuth provider (e.g., 'google')
  * @returns Promise with the OAuth result
  */
 export const handleOAuthLogin = async (
   provider: 'google' | 'apple' | 'facebook'
 ) => {
-  logger.info(`Starting ${provider} OAuth flow with direct integration`);
+  logger.info(`Starting ${provider} OAuth flow`);
 
   try {
     // For Google OAuth, we'll use a direct approach
@@ -48,7 +65,7 @@ export const handleOAuthLogin = async (
 };
 
 /**
- * Handle Google login using Expo's AuthSession
+ * Handle Google login using a direct approach
  */
 const handleGoogleLogin = async () => {
   try {
@@ -59,19 +76,28 @@ const handleGoogleLogin = async () => {
       revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
     };
 
-    // Set up the redirect URI for Expo Go
+    // Set up the redirect URI for the current environment
     let redirectUri;
 
-    if (Constants.appOwnership === 'expo') {
-      // For Expo Go, use the Expo-specific redirect
-      redirectUri = Linking.createURL('auth/callback');
-      logger.info('Using Expo Go specific redirect URI', { redirectUri });
+    if (isRunningInExpoGo()) {
+      // For Expo Go, use the Expo-specific redirect format
+      // This creates a URL like: exp://192.168.x.x:8081/--/auth/callback
+      redirectUri = Linking.createURL('auth/callback', {
+        isTripleSlashed: true,
+      });
+      // redirectUri =
+      //   'https://auth.expo.io/arunanksharan/rivo-real-estate/auth/callback';
+      // redirectUri = makeRedirectUri({
+      //   useProxy: true,
+      // });
+      logger.info('Using Expo auth proxy URI', { redirectUri });
+      // logger.info('Using Expo Go specific redirect URI', { redirectUri });
     } else {
       // For standalone app, use the app scheme
       redirectUri = makeRedirectUri({
         scheme: 'rivorealestate',
         path: 'auth/callback',
-        preferLocalhost: false,
+        // preferLocalhost: false,
       });
     }
 
@@ -86,7 +112,7 @@ const handleGoogleLogin = async () => {
       clientId = GOOGLE_CONFIG.iosClientId;
     } else if (Platform.OS === 'android') {
       clientId = GOOGLE_CONFIG.androidClientId;
-    } else if (Constants.appOwnership === 'expo') {
+    } else if (isRunningInExpoGo()) {
       clientId = GOOGLE_CONFIG.expoClientId;
     }
 
@@ -98,13 +124,19 @@ const handleGoogleLogin = async () => {
     authUrl.searchParams.append('scope', 'openid email profile');
     authUrl.searchParams.append('state', state);
     authUrl.searchParams.append('prompt', 'select_account');
+    // Add these parameters to ensure proper mobile flow
+    authUrl.searchParams.append('access_type', 'offline');
 
     logger.info('Opening Google auth URL', { url: authUrl.toString() });
 
     // Open the auth URL in a browser
     const result = await WebBrowser.openAuthSessionAsync(
       authUrl.toString(),
-      redirectUri
+      redirectUri,
+      {
+        showInRecents: true,
+        createTask: true,
+      }
     );
 
     if (result.type === 'success') {
@@ -136,7 +168,6 @@ const handleGoogleLogin = async () => {
         body: new URLSearchParams({
           code,
           client_id: clientId,
-          client_secret: '', // Client secret is not needed for mobile apps
           redirect_uri: redirectUri,
           grant_type: 'authorization_code',
         }).toString(),
@@ -155,6 +186,7 @@ const handleGoogleLogin = async () => {
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: tokenData.id_token,
+        nonce: state, // Use the same state as nonce for verification
       });
 
       if (error) {
@@ -175,6 +207,107 @@ const handleGoogleLogin = async () => {
 };
 
 /**
+ * Handle Google login using Expo's auth methods
+ */
+// const handleGoogleLogin = async (): Promise<{ session: any; user: any }> => {
+//   try {
+//     // More reliable check for Expo Go
+//     const isInExpoGo = isRunningInExpoGo();
+
+//     // Get the appropriate client ID based on platform
+//     let clientId =
+//       Platform.OS === 'ios'
+//         ? GOOGLE_CONFIG.iosClientId
+//         : Platform.OS === 'android'
+//           ? GOOGLE_CONFIG.androidClientId
+//           : GOOGLE_CONFIG.webClientId;
+
+//     if (isInExpoGo) {
+//       clientId = GOOGLE_CONFIG.expoClientId;
+//     }
+
+//     // Create the redirect URI using expo-auth-session
+//     const redirectUri = createRedirectUri();
+//     logger.info('Final redirect URI before auth start', {
+//       redirectUri,
+//       type: typeof redirectUri,
+//       isString: typeof redirectUri === 'string',
+//     });
+
+//     logger.info('Google OAuth redirect URI', { redirectUri });
+
+//     // Start the OAuth flow with Supabase
+//     const { data, error } = await supabase.auth.signInWithOAuth({
+//       provider: 'google',
+//       options: {
+//         redirectTo: redirectUri,
+//         skipBrowserRedirect: true,
+//         queryParams: {
+//           access_type: 'offline',
+//         },
+//       },
+//     });
+
+//     if (error || !data?.url) {
+//       logger.error('OAuth initialization error', error || 'No URL returned');
+//       throw error || new Error('No OAuth URL returned from Supabase');
+//     }
+
+//     logger.info('Opening OAuth URL in browser', { url: data.url });
+
+//     // Use the appropriate method for opening the auth session
+//     let result;
+//     if (isInExpoGo) {
+//       // For Expo Go, use AuthSession
+//       // const AuthSession = require('expo-auth-session');
+//       result = await AuthSession.startAsync({
+//         authUrl: data.url,
+//         returnUrl: redirectUri,
+//       });
+
+//       if (result.type !== 'success' || !result.params?.code) {
+//         throw new Error('Google sign in was cancelled or failed');
+//       }
+
+//       const code = result.params.code;
+//       logger.info('Got authorization code, exchanging for session');
+
+//       // Exchange code for session
+//       const sessionResult = await supabase.auth.exchangeCodeForSession(code);
+//       if (sessionResult.error) {
+//         throw sessionResult.error;
+//       }
+
+//       return sessionResult.data;
+//     } else {
+//       // For standalone app
+//       result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+
+//       if (result.type !== 'success') {
+//         throw new Error('Google sign in was cancelled or failed');
+//       }
+
+//       const url = new URL(result.url);
+//       const code = url.searchParams.get('code');
+
+//       if (!code) {
+//         throw new Error('No authorization code found in redirect URL');
+//       }
+
+//       // Exchange code for session
+//       const sessionResult = await supabase.auth.exchangeCodeForSession(code);
+//       if (sessionResult.error) {
+//         throw sessionResult.error;
+//       }
+
+//       return sessionResult.data;
+//     }
+//   } catch (error) {
+//     logger.error('Google login error', error);
+//     throw error;
+//   }
+// };
+/**
  * Handle OAuth using Supabase's built-in flow
  */
 const handleSupabaseOAuth = async (
@@ -184,9 +317,11 @@ const handleSupabaseOAuth = async (
     // Create a redirect URI based on the environment
     let redirectUri;
 
-    if (Constants.appOwnership === 'expo') {
+    if (isRunningInExpoGo()) {
       // For Expo Go, use the Expo-specific redirect
-      redirectUri = Linking.createURL('auth/callback');
+      redirectUri = Linking.createURL('auth/callback', {
+        isTripleSlashed: true,
+      });
       logger.info('Using Expo Go specific redirect URI', { redirectUri });
     } else {
       // For standalone app, use the app scheme
@@ -204,7 +339,12 @@ const handleSupabaseOAuth = async (
       provider,
       options: {
         redirectTo: redirectUri,
-        skipBrowserRedirect: true,
+        skipBrowserRedirect: false, // Changed to false to ensure proper redirect handling
+        scopes: 'email profile',
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       },
     });
 
@@ -220,8 +360,15 @@ const handleSupabaseOAuth = async (
 
     logger.info('Opening OAuth URL in browser', { url: data.url });
 
-    // Open the URL in a web browser
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+    // Open the URL in a web browser with enhanced options
+    const result = await WebBrowser.openAuthSessionAsync(
+      data.url,
+      redirectUri,
+      {
+        showInRecents: true,
+        createTask: true,
+      }
+    );
 
     // Handle the result
     if (result.type === 'success') {
@@ -260,3 +407,56 @@ const handleSupabaseOAuth = async (
     throw error;
   }
 };
+
+// const handleGoogleLogin = async (): Promise<{ session: any; user: any }> => {
+//   try {
+//     const isInExpoGo = isRunningInExpoGo();
+//     const redirectUri = createRedirectUri();
+//     logger.info('Google OAuth redirect URI', { redirectUri });
+
+//     // Start the OAuth flow with Supabase
+//     const { data, error } = await supabase.auth.signInWithOAuth({
+//       provider: 'google',
+//       options: {
+//         redirectTo: redirectUri,
+//         skipBrowserRedirect: true,
+//         queryParams: {
+//           access_type: 'offline',
+//         },
+//       },
+//     });
+
+//     if (error || !data?.url) {
+//       logger.error('OAuth initialization error', error || 'No URL returned');
+//       throw error || new Error('No OAuth URL returned from Supabase');
+//     }
+
+//     logger.info('Opening OAuth URL in browser', { url: data.url });
+
+//     // Use the WebBrowser API directly for both environments
+//     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+
+//     if (result.type !== 'success') {
+//       throw new Error('Google sign in was cancelled or failed');
+//     }
+
+//     // Extract the code from the URL
+//     const url = new URL(result.url);
+//     const code = url.searchParams.get('code');
+
+//     if (!code) {
+//       throw new Error('No authorization code found in redirect URL');
+//     }
+
+//     // Exchange code for session
+//     const sessionResult = await supabase.auth.exchangeCodeForSession(code);
+//     if (sessionResult.error) {
+//       throw sessionResult.error;
+//     }
+
+//     return sessionResult.data;
+//   } catch (error) {
+//     logger.error('Google login error', error);
+//     throw error;
+//   }
+// };
