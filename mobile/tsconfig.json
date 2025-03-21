@@ -3,8 +3,10 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
+    "jsx": "react-native",
     "paths": {
       "@/*": ["src/*"],
+      "@app/*": ["app/*"],
       "@assets/*": ["src/assets/*"],
       "@components/*": ["src/components/*"],
       "@hooks/*": ["src/hooks/*"],
@@ -23,6 +25,9 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
-    "src/types/*.d.ts"
+    "src/types/*.d.ts",
+    "index.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx"
   ]
 }
