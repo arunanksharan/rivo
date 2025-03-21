@@ -42,6 +42,7 @@ export const authService = {
    * Sign up a new user
    */
   signUp: async ({ email, password, firstName, lastName }: SignUpParams) => {
+    logger.info('Attempting to sign up user', { email, firstName, lastName });
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -54,9 +55,11 @@ export const authService = {
     });
 
     if (error) {
+      logger.error('Signup error', error);
       throw new Error(error.message);
     }
 
+    logger.info('Signup successful', { userId: data.user?.id });
     return data;
   },
 

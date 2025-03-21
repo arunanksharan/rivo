@@ -93,10 +93,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      await authService.signUp(params);
+      console.log('AuthContext: Starting signup with params:', { 
+        email: params.email,
+        firstName: params.firstName,
+        lastName: params.lastName 
+      });
+      const result = await authService.signUp(params);
+      console.log('AuthContext: Signup successful, result:', result);
       // Note: Depending on your Supabase setup, the user might need to confirm their email
       // before they can sign in. In that case, don't automatically sign them in here.
     } catch (error: unknown) {
+      console.error('AuthContext: Signup failed:', error);
       if (error instanceof Error) {
         setError(error.message);
       }

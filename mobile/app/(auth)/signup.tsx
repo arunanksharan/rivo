@@ -31,6 +31,12 @@ export default function SignupScreen() {
     password?: string;
     confirmPassword?: string;
   }>({});
+  const [debugLog, setDebugLog] = useState<string>('');
+
+  const addDebugLog = (message: string) => {
+    setDebugLog(prev => `${prev}\n${message}`);
+    console.log(message);
+  };
 
   const validateForm = () => {
     const newErrors: {
@@ -75,12 +81,14 @@ export default function SignupScreen() {
     if (!validateForm()) return;
 
     try {
+      addDebugLog(`Starting signup process... ${email}`);
       await signUp({
         email,
         password,
         firstName,
         lastName,
       });
+      addDebugLog('Signup successful');
       Alert.alert(
         'Registration Successful',
         'Please check your email to verify your account.',
@@ -92,15 +100,20 @@ export default function SignupScreen() {
         ]
       );
     } catch (error: any) {
+      const errorMsg = `Signup failed: ${error.message}`;
+      addDebugLog(errorMsg);
       Alert.alert('Registration Failed', error.message);
     }
   };
 
   const handleGoogleSignup = async () => {
     try {
+      addDebugLog('Signing up with Google...');
       await signInWithGoogle();
       // The auth context will handle the redirect after successful signup
     } catch (error: any) {
+      const errorMsg = `Google signup failed: ${error.message}`;
+      addDebugLog(errorMsg);
       Alert.alert('Google Signup Failed', error.message);
     }
   };
@@ -124,12 +137,18 @@ export default function SignupScreen() {
         </Text>
         <Text
           variant="body1"
-          color={theme.colors.textLight}
-          style={styles.subtitle}
+          style={[styles.subtitle, { color: theme.colors.text }]}
         >
-          Sign up to get started with Rivo Real Estate
+          Sign up to get started with Rivo
         </Text>
       </View>
+
+      {/* Debug log display */}
+      {__DEV__ && debugLog ? (
+        <View style={styles.debugContainer}>
+          <Text style={styles.debugText}>{debugLog}</Text>
+        </View>
+      ) : null}
 
       <View style={styles.formContainer}>
         <View style={styles.nameRow}>
@@ -288,5 +307,15 @@ const styles = StyleSheet.create({
   },
   signInLink: {
     marginLeft: 4,
+  },
+  debugContainer: {
+    margin: 10,
+    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 5,
+  },
+  debugText: {
+    fontSize: 12,
+    fontFamily: 'monospace',
   },
 });
