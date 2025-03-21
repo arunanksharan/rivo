@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import { API_CONFIG } from '@/config';
 import { logger } from '@/utils/logger';
+import { handleOAuthLogin } from '@/utils/oauthHandler';
 
 // Initialize Supabase client
 export const supabase = createClient(
@@ -83,15 +84,13 @@ export const authService = {
    * Sign in with Google OAuth
    */
   signInWithGoogle: async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-    });
-
-    if (error) {
-      throw new Error(error.message);
+    logger.info('Starting Google OAuth signin');
+    try {
+      return await handleOAuthLogin('google');
+    } catch (error) {
+      logger.error('Google OAuth error', error);
+      throw new Error(error instanceof Error ? error.message : 'Google sign in failed');
     }
-
-    return data;
   },
 
   /**

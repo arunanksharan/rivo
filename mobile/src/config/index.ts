@@ -26,6 +26,10 @@ import {
   USE_MOCK_DATA,
   ENABLE_LOGGING,
   LOG_LEVEL,
+  GOOGLE_WEB_CLIENT_ID,
+  GOOGLE_ANDROID_CLIENT_ID,
+  GOOGLE_EXPO_CLIENT_ID,
+  GOOGLE_IOS_CLIENT_ID,
 } from '@env';
 
 // Helper function to parse boolean environment variables
@@ -56,6 +60,11 @@ export const API_CONFIG = {
 
   // Maps and Location
   GOOGLE_MAPS_API_KEY: GOOGLE_MAPS_API_KEY || 'mock-google-maps-api-key',
+  GOOGLE_WEB_CLIENT_ID: GOOGLE_WEB_CLIENT_ID || 'mock-google-web-client-id',
+  GOOGLE_ANDROID_CLIENT_ID:
+    GOOGLE_ANDROID_CLIENT_ID || 'mock-google-android-client-id',
+  GOOGLE_IOS_CLIENT_ID: GOOGLE_IOS_CLIENT_ID || 'mock-google-ios-client-id',
+  GOOGLE_EXPO_CLIENT_ID: GOOGLE_EXPO_CLIENT_ID || 'mock-google-expo-client-id',
 
   // Voice Assistant
   VOICE_ASSISTANT_API_URL:
