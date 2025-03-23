@@ -3,62 +3,143 @@ Authentication endpoints for the application.
 
 This module defines the API endpoints for user authentication.
 """
-from typing import Any
+import secrets
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    get_password_hash,
+    verify_password,
+    verify_token,
+)
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse
-from app.services.supabase import SupabaseUser, get_current_user
+from app.services.google_auth import (
+    exchange_code_for_token,
+    get_google_auth_url,
+    get_google_user_info,
+)
 
 logger = get_logger(__name__)
 router = APIRouter()
 
+# OAuth2 password bearer for token authentication
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-@router.post("/register", response_model=UserResponse)
+
+# Token response model
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+
+# Google auth request model
+class GoogleAuthRequest(BaseModel):
+    code: str
+    redirect_uri: str
+
+
+# Refresh token request model
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+async def get_current_user(
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+) -> User:
+    """
+    Get the current authenticated user from the JWT token.
+    
+    Args:
+        db: Database session
+        token: JWT token
+        
+    Returns:
+        User: Current authenticated user
+        
+    Raises:
+        HTTPException: If token is invalid or user not found
+    """
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    
+    return user
+
+
+@router.post("/register", response_model=Token)
 async def register_user(
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: SupabaseUser = Depends(get_current_user),
 ) -> Any:
     """
-    Register a new user after Supabase authentication.
-    
-    This endpoint is called after the user has authenticated with Supabase on the frontend.
-    It creates a new user record in our database linked to the Supabase user.
+    Register a new user with email and password.
     
     Args:
         user_data: User data for registration
         db: Database session
-        current_user: Current authenticated Supabase user
         
     Returns:
-        UserResponse: Created user data
+        Token: JWT tokens for the registered user
         
     Raises:
         HTTPException: If user already exists or registration fails
     """
-    logger.info(f"Registering user with Supabase ID: {current_user.id}")
+    logger.info(f"Registering user with email: {user_data.email}")
     
-    # Check if user already exists in our database
+    # Check if user already exists
     result = await db.execute(
-        select(User).where(User.supabase_id == current_user.id)
+        select(User).where(User.email == user_data.email)
     )
     existing_user = result.scalars().first()
     
     if existing_user:
-        logger.info(f"User already exists with Supabase ID: {current_user.id}")
-        return existing_user
+        logger.warning(f"User already exists with email: {user_data.email}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
     
-    # Create new user in our database
+    # Create new user
+    hashed_password = get_password_hash(user_data.password)
     new_user = User(
-        supabase_id=current_user.id,
-        email=current_user.email,
-        full_name=user_data.full_name or current_user.user_metadata.get("full_name", ""),
+        email=user_data.email,
+        hashed_password=hashed_password,
+        full_name=user_data.full_name or "",
+        auth_provider="email",
     )
     
     db.add(new_user)
@@ -67,42 +148,226 @@ async def register_user(
     
     logger.info(f"User registered successfully with ID: {new_user.id}")
     
-    return new_user
+    # Create tokens
+    access_token = create_access_token({"sub": str(new_user.id)})
+    refresh_token = create_refresh_token({"sub": str(new_user.id)})
+    
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+    )
+
+
+@router.post("/login", response_model=Token)
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Authenticate a user with email and password.
+    
+    Args:
+        form_data: OAuth2 password request form
+        db: Database session
+        
+    Returns:
+        Token: JWT tokens for the authenticated user
+        
+    Raises:
+        HTTPException: If authentication fails
+    """
+    logger.info(f"Login attempt for user: {form_data.username}")
+    
+    # Find user by email
+    result = await db.execute(
+        select(User).where(User.email == form_data.username)
+    )
+    user = result.scalars().first()
+    
+    # Verify user and password
+    if not user or not verify_password(form_data.password, user.hashed_password or ""):
+        logger.warning(f"Invalid login credentials for: {form_data.username}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Create tokens
+    access_token = create_access_token({"sub": str(user.id)})
+    refresh_token = create_refresh_token({"sub": str(user.id)})
+    
+    logger.info(f"User logged in successfully: {user.email}")
+    
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+    )
+
+
+@router.get("/google/auth-url")
+async def google_auth_url(request: Request) -> Dict[str, str]:
+    """
+    Get Google OAuth authorization URL.
+    
+    Args:
+        request: FastAPI request object
+        
+    Returns:
+        Dict[str, str]: Authorization URL and state
+    """
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    
+    # Generate redirect URI based on the frontend URL
+    redirect_uri = f"{settings.frontend_url}/auth/callback"
+    
+    # Get Google auth URL
+    auth_url = await get_google_auth_url(redirect_uri, state)
+    
+    return {
+        "auth_url": auth_url,
+        "state": state,
+    }
+
+
+@router.post("/google/callback", response_model=Token)
+async def google_callback(
+    request: GoogleAuthRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Handle Google OAuth callback.
+    
+    Args:
+        request: Google auth request with code and redirect URI
+        db: Database session
+        
+    Returns:
+        Token: JWT tokens for the authenticated user
+        
+    Raises:
+        HTTPException: If authentication fails
+    """
+    try:
+        # Exchange code for token
+        token_data = await exchange_code_for_token(request.code, request.redirect_uri)
+        
+        # Get user info from Google
+        user_info = await get_google_user_info(token_data["access_token"])
+        
+        # Check if user exists
+        result = await db.execute(
+            select(User).where(User.email == user_info["email"])
+        )
+        user = result.scalars().first()
+        
+        if not user:
+            # Create new user
+            user = User(
+                email=user_info["email"],
+                full_name=user_info.get("name", ""),
+                auth_provider="google",
+                google_id=user_info["sub"],
+            )
+            
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+            
+            logger.info(f"New Google user created: {user.email}")
+        else:
+            # Update existing user's Google ID if not set
+            if not user.google_id:
+                user.google_id = user_info["sub"]
+                user.auth_provider = "google"
+                await db.commit()
+                logger.info(f"Updated Google ID for user: {user.email}")
+        
+        # Create tokens
+        access_token = create_access_token({"sub": str(user.id)})
+        refresh_token = create_refresh_token({"sub": str(user.id)})
+        
+        return Token(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+        )
+    
+    except Exception as e:
+        logger.error(f"Google authentication error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google authentication failed",
+        )
+
+
+@router.post("/refresh-token", response_model=Token)
+async def refresh_token(
+    request: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Refresh access token using refresh token.
+    
+    Args:
+        request: Refresh token request
+        db: Database session
+        
+    Returns:
+        Token: New JWT tokens
+        
+    Raises:
+        HTTPException: If refresh token is invalid
+    """
+    payload = verify_token(request.refresh_token)
+    if not payload or payload.get("token_type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+    
+    # Verify user exists
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    
+    # Create new tokens
+    access_token = create_access_token({"sub": str(user.id)})
+    refresh_token = create_refresh_token({"sub": str(user.id)})
+    
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+    )
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
-    db: AsyncSession = Depends(get_db),
-    current_user: SupabaseUser = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> Any:
     """
     Get current user information.
     
-    This endpoint returns information about the currently authenticated user.
-    
     Args:
-        db: Database session
-        current_user: Current authenticated Supabase user
+        current_user: Current authenticated user
         
     Returns:
         UserResponse: Current user data
-        
-    Raises:
-        HTTPException: If user not found in database
     """
-    logger.info(f"Getting user info for Supabase ID: {current_user.id}")
-    
-    # Get user from database
-    result = await db.execute(
-        select(User).where(User.supabase_id == current_user.id)
-    )
-    db_user = result.scalars().first()
-    
-    if not db_user:
-        logger.warning(f"User not found in database for Supabase ID: {current_user.id}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in database",
-        )
-    
-    return db_user
+    return current_user
