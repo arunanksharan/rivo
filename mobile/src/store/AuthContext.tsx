@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authService, AuthUser, SignInParams, SignUpParams, UpdateProfileParams } from '@/services/auth';
+import { authService, AuthUser, SignInParams, SignUpParams, UpdateProfileParams } from '@/services/authService';
+import { logger } from '@/utils/logger';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -44,7 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Just set the user to null and continue
           setUser(null);
         } else {
-          console.error('Error checking authentication status:', error);
+          logger.error('Error checking authentication status:', error);
         }
       } finally {
         setIsLoading(false);
@@ -52,145 +53,136 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkUser();
-
-    // Set up auth state listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          const currentUser = await authService.getCurrentUser();
-          setUser(currentUser);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-        }
-      }
-    );
-
-    return () => {
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
-    };
   }, []);
 
   const signIn = async (params: SignInParams) => {
-    setIsLoading(true);
     setError(null);
+    setIsLoading(true);
+
     try {
-      await authService.signIn(params);
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
+      const user = await authService.signIn(params);
+      setUser(user);
     } catch (error: unknown) {
       if (error instanceof Error) {
         setError(error.message);
+      } else {
+        setError('An unknown error occurred during sign in');
       }
-      throw error;
+      logger.error('Sign in error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const signUp = async (params: SignUpParams) => {
-    setIsLoading(true);
     setError(null);
+    setIsLoading(true);
+
     try {
-      console.log('AuthContext: Starting signup with params:', { 
-        email: params.email,
-        firstName: params.firstName,
-        lastName: params.lastName 
-      });
-      const result = await authService.signUp(params);
-      console.log('AuthContext: Signup successful, result:', result);
-      // Note: Depending on your Supabase setup, the user might need to confirm their email
-      // before they can sign in. In that case, don't automatically sign them in here.
+      const user = await authService.signUp(params);
+      setUser(user);
     } catch (error: unknown) {
-      console.error('AuthContext: Signup failed:', error);
       if (error instanceof Error) {
         setError(error.message);
+      } else {
+        setError('An unknown error occurred during sign up');
       }
-      throw error;
+      logger.error('Sign up error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const signInWithGoogle = async () => {
-    setIsLoading(true);
     setError(null);
+    setIsLoading(true);
+
     try {
-      await authService.signInWithGoogle();
-      // The auth state listener will handle updating the user
+      const user = await authService.signInWithGoogle();
+      setUser(user);
     } catch (error: unknown) {
       if (error instanceof Error) {
         setError(error.message);
+      } else {
+        setError('An unknown error occurred during Google sign in');
       }
-      throw error;
+      logger.error('Google sign in error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const signOut = async () => {
-    setIsLoading(true);
     setError(null);
+    setIsLoading(true);
+
     try {
       await authService.signOut();
       setUser(null);
     } catch (error: unknown) {
       if (error instanceof Error) {
         setError(error.message);
+      } else {
+        setError('An unknown error occurred during sign out');
       }
-      throw error;
+      logger.error('Sign out error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const updateProfile = async (params: UpdateProfileParams) => {
-    setIsLoading(true);
     setError(null);
+    setIsLoading(true);
+
     try {
-      await authService.updateProfile(params);
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
+      const updatedUser = await authService.updateProfile(params);
+      setUser(updatedUser);
     } catch (error: unknown) {
       if (error instanceof Error) {
         setError(error.message);
+      } else {
+        setError('An unknown error occurred during profile update');
       }
-      throw error;
+      logger.error('Update profile error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const resetPassword = async (email: string) => {
-    setIsLoading(true);
     setError(null);
+    setIsLoading(true);
+
     try {
       await authService.resetPassword(email);
     } catch (error: unknown) {
       if (error instanceof Error) {
         setError(error.message);
+      } else {
+        setError('An unknown error occurred during password reset');
       }
-      throw error;
+      logger.error('Reset password error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const value = {
-    user,
-    isLoading,
-    error,
-    signIn,
-    signUp,
-    signInWithGoogle,
-    signOut,
-    updateProfile,
-    resetPassword,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        error,
+        signIn,
+        signUp,
+        signInWithGoogle,
+        signOut,
+        updateProfile,
+        resetPassword,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
-
-// Fix missing import
-import { supabase } from '@/services/auth';

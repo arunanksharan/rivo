@@ -52,6 +52,7 @@ const parseNumber = (
 export const API_CONFIG = {
   // Base URLs
   BASE_URL: API_BASE_URL || 'https://api.example.com',
+  API_BASE_URL: API_BASE_URL || 'http://localhost:8000',
 
   // Authentication
   SUPABASE_URL: SUPABASE_URL || 'https://mock-supabase-instance.supabase.co',
